@@ -1,4 +1,6 @@
 import customtkinter as ctk
+from tkinter import ttk
+import database_management as db
 
 class InventoryApp(ctk.CTk):
     def __init__(self):
@@ -27,6 +29,20 @@ class InventoryApp(ctk.CTk):
         )
         self.st_label.pack(pady=20)
 
+        column=('id','name','price','qty')
+        self.tree=ttk.Treeview(self.stocks_frame, columns=column, show="headings", height=15)
+
+        self.tree.heading("id", text="Item ID")
+        self.tree.heading("name", text="Product Name")
+        self.tree.heading("qty", text="Quantity")
+        self.tree.heading("price", text="Price (₹)")
+
+        self.tree.column("id", width=80, anchor="center")
+        self.tree.column("name", width=250, anchor="w")
+        self.tree.column("qty", width=100, anchor="center")
+        self.tree.column("price", width=100, anchor="center")
+
+        self.tree.pack(pady=20, padx=20 ,fill="both")
     
         self.back_btn = ctk.CTkButton(
             self.stocks_frame, 
@@ -38,7 +54,18 @@ class InventoryApp(ctk.CTk):
 
         self.back_btn.pack(pady=10, padx=20, anchor="nw")
 
+        self.update_stock()
+
         self.show_dashboard_page()
+
+    def update_stock(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        data = db.fetch_all()
+        for row in data:
+            self.tree.insert("","end",values=row)
+        
 
 
     def show_dashboard_page(self):
