@@ -29,8 +29,13 @@ class InventoryApp(ctk.CTk):
         )
         self.st_label.pack(pady=20)
 
+        self.back_btn = ctk.CTkButton(self.stocks_frame, text="← Back to Dashboard", fg_color="#444444", hover_color="#333333",
+                                      command=self.show_dashboard_page)
+
+        self.back_btn.pack(pady=10, padx=20, anchor="nw")
+
         column=('id','name','price','qty')
-        self.tree=ttk.Treeview(self.stocks_frame, columns=column, show="headings", height=15)
+        self.tree=ttk.Treeview(self.stocks_frame, columns=column, show="headings", height=30)
 
         self.tree.heading("id", text="Item ID")
         self.tree.heading("name", text="Product Name")
@@ -43,18 +48,58 @@ class InventoryApp(ctk.CTk):
         self.tree.column("price", width=100, anchor="center")
 
         self.tree.pack(pady=20, padx=20 ,fill="both")
-    
-        self.back_btn = ctk.CTkButton(
-            self.stocks_frame, 
-            text="← Back to Dashboard", 
-            fg_color="#444444", 
-            hover_color="#333333",
-            command=self.show_dashboard_page
-        )
+
+        self.btn_group = ctk.CTkFrame(self.stocks_frame, fg_color="transparent")
+        self.btn_group.pack(pady=10)
+
+        self.add_btn = ctk.CTkButton(self.btn_group, text="ADD ITEM", 
+                                       fg_color="#FF0101", hover_color="#695957",
+                                       command=self.show_Add_page
+                                       )
+        self.add_btn.grid(row=0,column=0,padx=10)
+
+        self.edit_btn = ctk.CTkButton(self.btn_group, text="EDIT", 
+                                       fg_color="#029115", hover_color="#695957",
+                                       command=self.show_Add_page
+                                       )
+        self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
+        self.tree.bind("<Button-1>", self.handle_click)
+
+
+        self.del_btn = ctk.CTkButton(self.btn_group, text="DELETE ITEM", 
+                                       fg_color="#4313F0", hover_color="#695957",
+                                       command=self.delete_item
+                                       )
+        self.del_btn.grid(row=0,column=2,padx=10)
+        self.update_stock()
+
+        # --- 3. add frame ---
+
+        self.add_frame=ctk.CTkFrame(self, fg_color="transparent")
+        ctk.CTkLabel(self.add_frame, text="Add New Product", font=("Arial", 24, "bold")).pack(pady=30)
+        
+        self.back_btn = ctk.CTkButton(self.add_frame, text="← Back to Dashboard", fg_color="#444444", hover_color="#333333",
+                                      command=self.show_stocks_page)
 
         self.back_btn.pack(pady=10, padx=20, anchor="nw")
 
-        self.update_stock()
+
+        self.name_input = ctk.CTkEntry(self.add_frame, placeholder_text="Enter Product Name", width=300)
+        self.name_input.pack(pady=10)
+
+        self.price_input = ctk.CTkEntry(self.add_frame, placeholder_text="Enter Price (₹)", width=300)
+        self.price_input.pack(pady=10)
+
+        self.qty_input = ctk.CTkEntry(self.add_frame, placeholder_text="Enter Quantity", width=300)
+        self.qty_input.pack(pady=10)
+
+        self.save_btn = ctk.CTkButton(self.add_frame, text="Submit Item", fg_color="#2ecc71",
+                                      command=self.submit_data_logic)
+        self.save_btn.pack(pady=20)
+
+        self.cancel_btn = ctk.CTkButton(self.add_frame, text="Cancel", fg_color="#e74c3c", 
+                                        command=self.show_stocks_page)
+        self.cancel_btn.pack(pady=5)
 
         self.show_dashboard_page()
 
@@ -65,18 +110,64 @@ class InventoryApp(ctk.CTk):
         data = db.fetch_all()
         for row in data:
             self.tree.insert("","end",values=row)
+
+    def submit_data_logic(self):
+        name = self.name_input.get()
+        price_str = self.price_input.get()
+        qty_str = self.qty_input.get()
+
+        price = float(price_str)
+        qty = int(qty_str)
+
+        db.add_item(name,price,qty)
+        self.update_stock()
+
+        self.name_input.delete(0, 'end')
+        self.price_input.delete(0, 'end')
+        self.qty_input.delete(0, 'end')
+
+    def on_tree_select(self,event):
+        selected = self.tree.selection()
+        if selected:
+            self.edit_btn.grid(row=0, column=1, padx=10)
+        else:
+            self.edit_btn.grid_forget()
+
+    def handle_click(self,event):
+        item=self.tree.identify_row(event.y)
+
+        if not item:
+            self.tree.selection_remove(self.tree.selection())
+            self.edit_btn.grid_forget()
+
+    def delete_item(self):
+        id =self.tree.selection()
+        if id:
+            info=self.tree.item(id)
+            real_id=info['values'][0]
+            db.delete_item(real_id)
+            self.update_stock()
+        
         
 
 
     def show_dashboard_page(self):
 
-        self.stocks_frame.pack_forget() 
+        self.stocks_frame.pack_forget()
+        self.add_frame.pack_forget() 
         self.dashboard_frame.pack(fill="both", expand=True)
 
     def show_stocks_page(self):
 
         self.dashboard_frame.pack_forget()
+        self.add_frame.pack_forget() 
         self.stocks_frame.pack(fill="both", expand=True)
+
+    def show_Add_page(self):
+
+        self.dashboard_frame.pack_forget()
+        self.stocks_frame.pack_forget() 
+        self.add_frame.pack(fill="both", expand=True)
 
 if __name__ == "__main__" :
     app = InventoryApp()
