@@ -32,7 +32,34 @@ class InventoryApp(ctk.CTk):
         self.back_btn = ctk.CTkButton(self.stocks_frame, text="← Back to Dashboard", fg_color="#444444", hover_color="#333333",
                                       command=self.show_dashboard_page)
 
-        self.back_btn.pack(pady=10, padx=20, anchor="nw")
+        self.back_btn.pack(pady=20, padx=20, anchor="nw")
+
+        # Search Frame (To keep Entry and Button together)
+        search_container = ctk.CTkFrame(self.stocks_frame, fg_color="transparent")
+        search_container.pack(pady=20, padx=20, fill="x")
+
+        self.search_input = ctk.CTkEntry(
+            search_container, 
+            placeholder_text="Search by product name...",
+            width=600,
+            height=40,
+            corner_radius=20, # Rounded look
+            border_width=2,
+            border_color="#3B8ED0" # Blue border
+        )
+        self.search_input.pack(side="left", padx=(150, 10), expand=True, anchor="e")
+
+        self.search_btn = ctk.CTkButton(
+            search_container,
+            text="🔍 Search",
+            width=100,
+            height=40,
+            corner_radius=20,
+            command=self.search_data,
+            fg_color="#3B8ED0",
+            hover_color="#2B6DAE"
+        )
+        self.search_btn.pack(side="left", padx=(0, 150), expand=True, anchor="w")
 
         column=('id','name','price','qty')
         self.tree=ttk.Treeview(self.stocks_frame, columns=column, show="headings", height=30)
@@ -60,7 +87,7 @@ class InventoryApp(ctk.CTk):
 
         self.edit_btn = ctk.CTkButton(self.btn_group, text="EDIT", 
                                        fg_color="#029115", hover_color="#695957",
-                                       command=self.show_Add_page
+                                       command=self.prepare_edit
                                        )
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
         self.tree.bind("<Button-1>", self.handle_click)
@@ -103,7 +130,37 @@ class InventoryApp(ctk.CTk):
 
         self.show_dashboard_page()
 
+    def prepare_edit(self):
+        id=self.tree.selection()
+        self.name_input.delete(0,"end")
+        self.price_input.delete(0,"end")
+        self.qty_input.delete(0,"end")
+
+        info=self.tree.item(id)
+        self.current_id=info['values'][0]
+        self.name_input.insert(0,info['values'][1])
+        self.price_input.insert(0,info['values'][2])
+        self.qty_input.insert(0,info['values'][3])
+        self.show_Add_page()
+
+    def search_data(self):
+
+        text=self.search_input.get().strip()
+        if not text:
+            self.update_stock()
+        else:
+            for item in self.tree.get_children():
+                self.tree.delete(item)
+
+            data = db.search_items(text)
+            for row in data:
+                self.tree.insert("","end",values=row)
+
+
+
+
     def update_stock(self):
+
         for item in self.tree.get_children():
             self.tree.delete(item)
 
@@ -119,8 +176,13 @@ class InventoryApp(ctk.CTk):
         price = float(price_str)
         qty = int(qty_str)
 
-        db.add_item(name,price,qty)
-        self.update_stock()
+        if self.current_id:
+            db.update_items(self.current_id,name,price,qty)
+            self.current_id=None
+            self.update_stock()
+        else:
+            db.add_item(name,price,qty)
+            self.update_stock()
 
         self.name_input.delete(0, 'end')
         self.price_input.delete(0, 'end')
